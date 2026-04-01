@@ -1,33 +1,45 @@
 from crewai import Agent, Task, Crew, Process
+from langchain_community.llms import Ollama
 
-def create_trading_crew(stock_data):
-    # Analyst Agent: Looks for patterns
+# 1. Initialize the Free Local LLM (Ensure Ollama is running)
+local_llm = Ollama(model="llama3")
+
+def create_trading_crew(stock_context):
+    # Free Technical Analyst Agent
     analyst = Agent(
-        role='Technical Analyst',
-        goal='Analyze price action and indicators to find entry points.',
-        backstory="Expert in Indian equity markets with a focus on Nifty 50 stocks.",
+        role='Senior Technical Analyst',
+        goal='Analyze price action and indicators for entry signals',
+        backstory="Open-source AI specialist in Nifty50 price action.",
         allow_delegation=False,
-        verbose=True
+        verbose=True,
+        llm=local_llm  # <--- Using Local LLM
     )
 
-    # Risk Manager Agent: Essential for production to prevent blown accounts
+    # Free Risk Manager Agent
     risk_manager = Agent(
         role='Risk Manager',
-        goal='Evaluate trade signals and set strict Stop-Loss/Take-Profit levels.',
-        backstory="Conservative risk officer. Never allows a trade without a 1:2 Risk-Reward ratio.",
-        allow_delegation=True
+        goal='Validate signals against strict stop-loss and capital rules',
+        backstory="Conservative risk officer ensuring no trade exceeds 2% capital risk.",
+        allow_delegation=True,
+        verbose=True,
+        llm=local_llm  # <--- Using Local LLM
     )
 
+    # Tasks remain the same but now run on your local machine
     analysis_task = Task(
-        description=f"Analyze this data: {stock_data}. Provide a Buy/Sell/Hold recommendation.",
+        description=f"Analyze this data: {stock_context}. Provide a Buy/Sell/Hold recommendation.",
         agent=analyst,
-        expected_output="A concise trading signal with technical justification."
+        expected_output="A clear trading signal with technical reasoning."
     )
 
     risk_task = Task(
         description="Verify the analyst signal. Define the exact Stop-Loss and Target Price.",
         agent=risk_manager,
-        expected_output="Final approved trade details including SL and Target."
+        expected_output="Final approved trade plan: Signal, Entry, SL, and Target."
     )
 
-    return Crew(agents=[analyst, risk_manager], tasks=[analysis_task, risk_task], process=Process.sequential)
+    return Crew(
+        agents=[analyst, risk_manager], 
+        tasks=[analysis_task, risk_task], 
+        process=Process.sequential
+    )
